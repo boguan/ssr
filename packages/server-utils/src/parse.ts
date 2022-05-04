@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs'
 import { join } from 'path'
-import { ParseFeRouteItem } from 'ssr-types'
+import { IConfig, ParseFeRouteItem } from 'ssr-types'
 import { getFeDir, accessFile, writeRoutes, cpManualRoutes } from './cwd'
 import { loadConfig } from './loadConfig'
 
@@ -29,12 +29,27 @@ export const getImageOutputPath = () => {
   }
 }
 
-// const extraOptions = {}
-const parseFeRoutes = async ({ dir }: {dir: string}) => {
-  const { dynamic, routerPriority, routerOptimize, isVite } = loadConfig()
-  if (isVite && !dynamic) {
-    throw new Error('Vite模式禁止关闭 dynamic ')
-  }
+export const getSSRExtraOptions = async () => {
+  const layoutPath = '@/components/layout/index'
+  const AppPath = '@/components/layout/App'
+  const layoutFetch = await accessFile(join(getFeDir(), './components/layout/fetch.ts'))
+  const accessStore = await accessFile(join(getFeDir(), './store/index.ts'))
+  return `
+    export { default as Layout } from "${layoutPath}"
+    export { default as App } from "${AppPath}"
+    ${layoutFetch ? 'export { default as layoutFetch } from "@/components/layout/fetch"' : ''}
+    ${accessStore ? 'export * from "@/store/index"' : ''}
+`
+}
+
+const parseFeRoutes = async ({ dir, extraOptions, dynamic, routerPriority, routerOptimize }:
+{
+  dir: string
+  extraOptions: string
+  routerPriority: IConfig['routerPriority']
+  routerOptimize: IConfig['routerOptimize']
+  dynamic: IConfig['dynamic']
+}) => {
   // 根据目录结构生成前端路由表
   const pathRecord = [''] // 路径记录
   // @ts-expect-error
@@ -61,19 +76,12 @@ const parseFeRoutes = async ({ dir }: {dir: string}) => {
     }
   }
 
-  const layoutPath = '@/components/layout/index'
-  const AppPath = '@/components/layout/App'
-  const layoutFetch = await accessFile(join(getFeDir(), './components/layout/fetch.ts'))
-  const accessStore = await accessFile(join(getFeDir(), './store/index.ts'))
   const re = /"webpackChunkName":("(.+?)")/g
 
   let routes = `
       // The file is provisional which will be overwritten when restart
       export const FeRoutes = ${JSON.stringify(arr)} 
-      export { default as Layout } from "${layoutPath}"
-      export { default as App } from "${AppPath}"
-      ${layoutFetch ? 'export { default as layoutFetch } from "@/components/layout/fetch"' : ''}
-      ${accessStore ? 'export * from "@/store/index"' : ''}
+      ${extraOptions}
       `
   routes = routes.replace(/"component":("(.+?)")/g, (global, m1, m2) => {
     const currentWebpackChunkName = re.exec(routes)![2]

@@ -48,11 +48,16 @@ const startFunc = async (argv: Argv) => {
   if (!argv.noclean) {
     await cleanOutDir()
   }
-  const { parseFeRoutes, transformConfig, getPagesDir } = await import('ssr-server-utils')
+  const { parseFeRoutes, transformConfig, getPagesDir, getSSRExtraOptions, loadConfig } = await import('ssr-server-utils')
   await transformConfig()
   await handleEnv(argv)
+  const { dynamic, routerOptimize, routerPriority } = loadConfig()
   await parseFeRoutes({
-    dir: getPagesDir()
+    dir: getPagesDir(),
+    extraOptions: await getSSRExtraOptions(),
+    dynamic,
+    routerOptimize,
+    routerPriority
   })
   spinner.stop()
   await startOrBuild(argv, 'start')
@@ -64,11 +69,16 @@ const buildFunc = async (argv: Argv) => {
   if (!argv.noclean) {
     await cleanOutDir()
   }
-  const { parseFeRoutes, transformConfig, getPagesDir } = await import('ssr-server-utils')
+  const { parseFeRoutes, transformConfig, getPagesDir, getSSRExtraOptions, loadConfig } = await import('ssr-server-utils')
   await transformConfig()
   await handleEnv(argv)
+  const { dynamic, routerOptimize, routerPriority } = loadConfig()
   await parseFeRoutes({
-    dir: getPagesDir()
+    dir: getPagesDir(),
+    extraOptions: await getSSRExtraOptions(),
+    dynamic,
+    routerOptimize,
+    routerPriority
   })
   spinner.stop()
   await startOrBuild(argv, 'build')
